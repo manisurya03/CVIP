@@ -39,15 +39,11 @@ def detect_faces(img: np.ndarray) -> List[List[float]]:
     # Add your code here. Do not modify the return and input arguments.
     gray_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     haar_face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-    faces = haar_face_cascade.detectMultiScale(gray_img, scaleFactor=1.2,minNeighbors=3,flags=0,minSize=(0, 0))
-    for (x,y,w,h) in faces:
+    faces = haar_face_cascade.detectMultiScale(gray_img, scaleFactor=1.2, minNeighbors=3, flags=0, minSize=(0, 0))
+    detection_results = []
+    for (x, y, w, h) in faces:
         cv2.rectangle(img, (x, y), (x + w, y + h), (211, 211, 211), 2)
         detection_results.append([float(x), float(y), float(w), float(h)])
-
-    # print(detection_results)
-    # cv2.imshow("img",img)
-    # cv2.waitKey(0)
-    
     return detection_results
 
 
@@ -65,61 +61,35 @@ def cluster_faces(imgs: Dict[str, np.ndarray], K: int) -> List[List[str]]:
             The elements of cluster list are python strings, which are image filenames (without path).
             Note that, the final filename should be from the input "imgs". Please do not change the filenames.
     """
-    cluster_results: List[List[str]] = [[]] * K # Please make sure your output follows this data format.
-
-    # Add your code here. Do not modify the return and input arguments.
-    cluster_results = []
+    cluster_results = [[] for _ in range(K)]
     face_encoded_list = []
-    images = []
-    b = []
-    detection_results = []
-    
-    for image_name, img in sorted(imgs.items()):
 
+    for image_name, img in sorted(imgs.items()):
         gray_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         haar_face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        faces = haar_face_cascade.detectMultiScale(gray_img, scaleFactor=1.2,minNeighbors=3,flags=0,minSize=(0, 0))
+        faces = haar_face_cascade.detectMultiScale(gray_img, scaleFactor=1.2, minNeighbors=3, flags=0, minSize=(0, 0))
 
         for (x, y, w, h) in faces:
             encoded_face = face_recognition.face_encodings(img, [(y, x + w, y + h, x)])
             face_encoded_list.append(encoded_face)
 
-    encode = np.array(face_encoded_list) # Converting image encodings into a 'Numpy' array
+    encode = np.array(face_encoded_list)
     encode_1 = np.squeeze(encode)
 
-    # centroids for K-means       
     k_means = KMeans()
+    centroids = k_means.Centroids_func(encode_1, K)
+    km = k_means.kmeans(encode_1, K, centroids, 100)
 
-    centroids = k_means.Centroids_func(enc1, K)
-
-    km = k_means.kmeans(enc1, K, centroids, 100)
-    type(km)
-    km = np.delete(km, 27)
-    km = np.delete(km, 29)
-    km = np.delete(km, 32)
-
-    # print(km)
-    test_list = []
-
-    for cl in range(int(K)):
-
-        # dict = {}
+    for cl in range(K):
         clusters = []
         image_list = []
         for index in range(len(km)):
             if cl == km[index]:
                 clusters.append(index)
         for index in clusters:
-            image_list.append(dict_keys[index])
-        # dict = {"cluster_no": cl, "elements": image_list}
-        # cluster_results.append(dict)
-        test_list.append(image_list)
+            image_list.append(list(imgs.keys())[index])
+        cluster_results[cl] = image_list
 
-        cluster_results = test_list
-
-
-    
-    
     return cluster_results
 
 
@@ -135,14 +105,14 @@ class KMeans:
         pass
 
     def distance_Euclidean(self, a, b):
-        return math.sqrt(np.sum((a - b) ** 2))
+        return np.sqrt(np.sum((a - b) ** 2))
 
     def Centroids_func(self, data, k):
         centroids = []
 
         # Randomly choose first centroid
         centriods_data = data[np.random.randint(data.shape[0]), :]
-        centriods = centriods.append(centriods_data)
+        centroids.append(centriods_data)
 
         # Loop through for given iterations
         for ind in range(k - 1):
@@ -165,7 +135,7 @@ class KMeans:
                 # append the best distance
                 distance.append(d)
 
-            # Convery to a 'numpy' array
+            # Convert to a 'numpy' array
             distance = np.array(distance)
 
             # Choose farthest point as the next centroid
@@ -178,7 +148,6 @@ class KMeans:
         # Return centroids
         return centroids
 
-    # Calculate Distance b/w points & centroids
     def Centroids_distance(self, x, y, eu):
         # Placeholder for distance matrix (b/w points & centroids)
         gap = []
